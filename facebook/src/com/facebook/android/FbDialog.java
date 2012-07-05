@@ -184,8 +184,8 @@ public class FbDialog extends Dialog {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            mSpinner.dismiss();
-            /* 
+            Util.dismissDialog(mSpinner);
+            /*
              * Once webview is fully loaded, set the mContent background to be transparent
              * and make visible the 'x' image. 
              */
