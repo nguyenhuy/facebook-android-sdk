@@ -178,13 +178,25 @@ public class FbDialog extends Dialog {
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             Util.logd("Facebook-WebView", "Webview loading URL: " + url);
             super.onPageStarted(view, url, favicon);
-            mSpinner.show();
+            // Fix: WindowManager$BadTokenException: Unable to add window -- token android.os.BinderProxy@... is not valid; is your activity running?
+            // Suggested by Mr. Joe Wreschnig
+            if(FbDialog.this.isShowing()) {
+                mSpinner.show();
+            }
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            Util.dismissDialog(mSpinner);
+            // Suggested solution is from this pull request: https://github.com/facebook/facebook-android-sdk/pull/267
+            // Suggested by Mr. Joe Wreschnig: Check if FbDialog and mSpinner are showing or not before dismissing
+            if(mSpinner != null && mSpinner.isShowing() && FbDialog.this.isShowing()) {
+                try{
+                    mSpinner.dismiss();
+                }catch (IllegalArgumentException ex) {
+                    // java.lang.IllegalArgumentException: View not attached to window manager
+                }
+            }
             /*
              * Once webview is fully loaded, set the mContent background to be transparent
              * and make visible the 'x' image. 

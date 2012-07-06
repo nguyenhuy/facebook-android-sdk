@@ -327,16 +327,4 @@ public final class Util {
             Log.d(tag, msg);
         }
     }
-
-    public static void dismissDialog(Dialog dialog) {
-        // Suggested solution is from this pull request: https://github.com/facebook/facebook-android-sdk/pull/267
-        // Check if the dialog is showing before dismiss
-        if(dialog != null && dialog.isShowing()) {
-            try{
-                dialog.dismiss();
-            }catch (IllegalArgumentException ex) {
-                // java.lang.IllegalArgumentException: View not attached to window manager
-            }
-        }
-    }
 }
