@@ -808,8 +808,9 @@ public class Facebook {
         String url = endpoint + "?" + Util.encodeUrl(parameters);
         if (context.checkCallingOrSelfPermission(Manifest.permission.INTERNET)
                 != PackageManager.PERMISSION_GRANTED) {
-            Util.showAlert(context, "Error",
-                    "Application requires permission to access the Internet");
+            Util.showAlert(context,
+                    context.getString(R.string.error),
+                    context.getString(R.string.permission_required));
         } else {
             new FbDialog(context, url, listener).show();
         }
