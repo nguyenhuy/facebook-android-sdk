@@ -29,8 +29,6 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 
-import android.*;
-import android.app.Dialog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
