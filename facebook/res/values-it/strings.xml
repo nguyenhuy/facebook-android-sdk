@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="loading">Caricamento…</string>
-    <string name="error">Errore</string>
+    <string name="com_facebook_loading">Caricamento…</string>
 </resources>

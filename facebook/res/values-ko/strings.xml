@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="loading">다운로드 중…</string>
-    <string name="error">오류</string>
+    <string name="com_facebook_loading">다운로드 중…</string>
 </resources>

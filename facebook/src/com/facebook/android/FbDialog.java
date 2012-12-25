@@ -1,5 +1,5 @@
-/*
- * Copyright 2010 Facebook, Inc.
+/**
+ * Copyright 2010-present Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,219 +16,68 @@
 
 package com.facebook.android;
 
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
-import android.view.Window;
-import android.view.WindowManager;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-
+import com.facebook.*;
 import com.facebook.android.Facebook.DialogListener;
+import com.facebook.widget.WebDialog;
 
-public class FbDialog extends Dialog {
-
-    static final int FB_BLUE = 0xFF6D84B4;
-    static final float[] DIMENSIONS_DIFF_LANDSCAPE = {20, 60};
-    static final float[] DIMENSIONS_DIFF_PORTRAIT = {40, 60};
-    static final FrameLayout.LayoutParams FILL =
-        new FrameLayout.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-                         ViewGroup.LayoutParams.FILL_PARENT);
-    static final int MARGIN = 4;
-    static final int PADDING = 2;
-    static final String DISPLAY_STRING = "touch";
-    static final String FB_ICON = "icon.png";
-
-    private String mUrl;
+/**
+ * This class is deprecated. See {@link com.facebook.widget.WebDialog}.
+ */
+@Deprecated
+public class FbDialog extends WebDialog {
     private DialogListener mListener;
-    private ProgressDialog mSpinner;
-    private ImageView mCrossImage;
-    private WebView mWebView;
-    private FrameLayout mContent;
 
     public FbDialog(Context context, String url, DialogListener listener) {
-        super(context, android.R.style.Theme_Translucent_NoTitleBar);
-        mUrl = url;
-        mListener = listener;
+        this(context, url, listener, DEFAULT_THEME);
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        mSpinner = new ProgressDialog(getContext());
-        mSpinner.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        mSpinner.setMessage(getContext().getString(R.string.loading));
+    public FbDialog(Context context, String url, DialogListener listener, int theme) {
+        super(context, url, theme);
+        setDialogListener(listener);
+    }
 
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        mContent = new FrameLayout(getContext());
+    public FbDialog(Context context, String action, Bundle parameters, DialogListener listener) {
+        super(context, action, parameters, DEFAULT_THEME, null);
+        setDialogListener(listener);
+    }
 
-        /* Create the 'x' image, but don't add to the mContent layout yet
-         * at this point, we only need to know its drawable width and height 
-         * to place the webview
-         */
-        createCrossImage();
-        
-        /* Now we know 'x' drawable width and height, 
-         * layout the webivew and add it the mContent layout
-         */
-        int crossWidth = mCrossImage.getDrawable().getIntrinsicWidth();
-        setUpWebView(crossWidth / 2);
-        
-        /* Finally add the 'x' image to the mContent layout and
-         * add mContent to the Dialog view
-         */
-        mContent.addView(mCrossImage, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
-        addContentView(mContent, new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+    public FbDialog(Context context, String action, Bundle parameters, DialogListener listener,
+                    int theme) {
+        super(context, action, parameters, theme, null);
+        setDialogListener(listener);
+    }
 
-        // Handle cancel events when user presses Back button, suggested here:https://github.com/fjsj/facebook-android-sdk/commit/c6337a70871d289378006476f89b8e9958a0950a
-        mSpinner.setOnCancelListener(new OnCancelListener() {
+    private void setDialogListener(DialogListener listener) {
+        this.mListener = listener;
+        setOnCompleteListener(new OnCompleteListener() {
             @Override
-            public void onCancel (DialogInterface dialogInterface) {
-                mWebView.stopLoading();
-                mListener.onCancel();
-                FbDialog.this.dismiss();
-            }
-        });
-
-        this.setOnCancelListener(new OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                mListener.onCancel();
+            public void onComplete(Bundle values, FacebookException error) {
+                callDialogListener(values, error);
             }
         });
     }
-    
-    private void createCrossImage() {
-        mCrossImage = new ImageView(getContext());
-        // Dismiss the dialog when user click on the 'x'
-        mCrossImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+
+    private void callDialogListener(Bundle values, FacebookException error) {
+        if (mListener == null) {
+            return;
+        }
+
+        if (values != null) {
+            mListener.onComplete(values);
+        } else {
+            if (error instanceof FacebookDialogException) {
+                FacebookDialogException facebookDialogException = (FacebookDialogException) error;
+                DialogError dialogError = new DialogError(facebookDialogException.getMessage(),
+                        facebookDialogException.getErrorCode(), facebookDialogException.getFailingUrl());
+                mListener.onError(dialogError);
+            } else if (error instanceof FacebookOperationCanceledException) {
                 mListener.onCancel();
-                FbDialog.this.dismiss();
+            } else {
+                FacebookError facebookError = new FacebookError(error.getMessage());
+                mListener.onFacebookError(facebookError);
             }
-        });
-        Drawable crossDrawable = getContext().getResources().getDrawable(R.drawable.close);
-        mCrossImage.setImageDrawable(crossDrawable);
-        /* 'x' should not be visible while webview is loading
-         * make it visible only after webview has fully loaded
-        */
-        mCrossImage.setVisibility(View.INVISIBLE);
-    }
-
-    private void setUpWebView(int margin) {
-        LinearLayout webViewContainer = new LinearLayout(getContext());
-        mWebView = new WebView(getContext());
-        mWebView.setVerticalScrollBarEnabled(false);
-        mWebView.setHorizontalScrollBarEnabled(false);
-        mWebView.setWebViewClient(new FbDialog.FbWebViewClient());
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.loadUrl(mUrl);
-        mWebView.setLayoutParams(FILL);
-        mWebView.setVisibility(View.INVISIBLE);
-        mWebView.getSettings().setSavePassword(false);
-        
-        webViewContainer.setPadding(margin, margin, margin, margin);
-        webViewContainer.addView(mWebView);
-        mContent.addView(webViewContainer);
-    }
-
-    private class FbWebViewClient extends WebViewClient {
-
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            Util.logd("Facebook-WebView", "Redirect URL: " + url);
-            if (url.startsWith(Facebook.REDIRECT_URI)) {
-                Bundle values = Util.parseUrl(url);
-
-                String error = values.getString("error");
-                if (error == null) {
-                    error = values.getString("error_type");
-                }
-
-                if (error == null) {
-                    mListener.onComplete(values);
-                } else if (error.equals("access_denied") ||
-                           error.equals("OAuthAccessDeniedException")) {
-                    mListener.onCancel();
-                } else {
-                    mListener.onFacebookError(new FacebookError(error));
-                }
-
-                FbDialog.this.dismiss();
-                return true;
-            } else if (url.startsWith(Facebook.CANCEL_URI)) {
-                mListener.onCancel();
-                FbDialog.this.dismiss();
-                return true;
-            } else if (url.contains(DISPLAY_STRING)) {
-                return false;
-            }
-            // launch non-dialog URLs in a full browser
-            getContext().startActivity(
-                    new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-            return true;
-        }
-
-        @Override
-        public void onReceivedError(WebView view, int errorCode,
-                String description, String failingUrl) {
-            super.onReceivedError(view, errorCode, description, failingUrl);
-            mListener.onError(
-                    new DialogError(description, errorCode, failingUrl));
-            FbDialog.this.dismiss();
-        }
-
-        @Override
-        public void onPageStarted(WebView view, String url, Bitmap favicon) {
-            Util.logd("Facebook-WebView", "Webview loading URL: " + url);
-            super.onPageStarted(view, url, favicon);
-            // Fix: WindowManager$BadTokenException: Unable to add window -- token android.os.BinderProxy@... is not valid; is your activity running?
-            // Suggested by Mr. Joe Wreschnig
-            if(FbDialog.this.isShowing()) {
-                try {
-                    mSpinner.show();
-                } catch (WindowManager.BadTokenException ex) {
-                    // Sometimes, the Activity that supports this FbDialog was destroyed but the WebView still runs and this exception is thrown.
-                    // A fix was added to this file (line 99) to handle cancel events and stop WebView.
-                    // Try/catch is put here to make sure that it won't crash if that fix doesn't work.
-                }
-            }
-        }
-
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            super.onPageFinished(view, url);
-            // Suggested solution is from this pull request: https://github.com/facebook/facebook-android-sdk/pull/267
-            // Suggested by Mr. Joe Wreschnig: Check if FbDialog and mSpinner are showing or not before dismissing
-            if(mSpinner != null && mSpinner.isShowing() && FbDialog.this.isShowing()) {
-                try{
-                    mSpinner.dismiss();
-                }catch (IllegalArgumentException ex) {
-                    // java.lang.IllegalArgumentException: View not attached to window manager
-                }
-            }
-            /*
-             * Once webview is fully loaded, set the mContent background to be transparent
-             * and make visible the 'x' image. 
-             */
-            mContent.setBackgroundColor(Color.TRANSPARENT);
-            mWebView.setVisibility(View.VISIBLE);
-            mCrossImage.setVisibility(View.VISIBLE);
         }
     }
 }
