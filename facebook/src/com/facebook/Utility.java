@@ -375,11 +375,13 @@ final class Utility {
             
             cookieManager = CookieManager.getInstance();
 
-            // this method can throw java.lang.IllegalStateException: CookieSyncManager::createInstance() needs to be called before CookieSyncManager::getInstance()
-            // CookieSyncManager::createInstance() is called but it failed
-            // then we have exception when call CookieSyncManager::getInstance() (CookieManager.getCookie calls CookieSyncManager::getInstance()) 
+            // This method can throw:
+            // "java.lang.IllegalStateException: CookieSyncManager::createInstance()
+            // needs to be called before CookieSyncManager::getInstance()"
+            //
+            // CookieSyncManager::createInstance() is called but it failed and
+            // then we have exception when call CookieSyncManager::getInstance()
             cookies = cookieManager.getCookie(domain);
-            
         } catch (Exception e) {
             // CookieSyncManager.createInstance(context) can throw SqliteDiskIOException
         }
