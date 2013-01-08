@@ -364,19 +364,29 @@ final class Utility {
     }
 
     private static void clearCookiesForDomain(Context context, String domain) {
+        String cookies = null;
+        CookieManager cookieManager = null;
+        
         // This is to work around a bug where CookieManager may fail to instantiate if CookieSyncManager
         // has never been created.
         try {
             CookieSyncManager syncManager = CookieSyncManager.createInstance(context);
             syncManager.sync();
+            
+            cookieManager = CookieManager.getInstance();
+
+            // This method can throw:
+            // "java.lang.IllegalStateException: CookieSyncManager::createInstance()
+            // needs to be called before CookieSyncManager::getInstance()"
+            //
+            // CookieSyncManager::createInstance() is called but it failed and
+            // then we have exception when call CookieSyncManager::getInstance()
+            cookies = cookieManager.getCookie(domain);
         } catch (Exception e) {
             // CookieSyncManager.createInstance(context) can throw SqliteDiskIOException
         }
-
-        CookieManager cookieManager = CookieManager.getInstance();
-
-        String cookies = cookieManager.getCookie(domain);
-        if (cookies == null) {
+        
+        if (cookies == null || cookieManager == null) {
             return;
         }
 
